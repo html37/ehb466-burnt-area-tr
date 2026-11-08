@@ -24,14 +24,14 @@ computational cost.
 
 ## First results (dNBR benchmark vs. EFFIS)
 
-Evaluation area: EFFIS perimeter + 3 km buffer, 20 m grid, cloud/shadow/water pixels masked.
+Evaluation area: EFFIS perimeter + 3 km buffer, 20 m grid, cloud/shadow/water pixels masked. Adjacent Sentinel-2 tiles of the same pass are mosaicked (Manavgat: 36SUF+36SUG, Marmaris: 35SNA+35SPA), so the whole fire perimeter is covered; 0.7 % (Manavgat) and 0.0 % (Marmaris) of the reference area are masked.
 
 | Event | Threshold | Precision | Recall | F1 | IoU |
 |---|---|---|---|---|---|
-| Manavgat | 0.10 | 0.894 | 0.880 | 0.887 | 0.797 |
-| Manavgat | 0.27 | 0.960 | 0.689 | 0.802 | 0.669 |
-| Manavgat | Otsu (0.335) | 0.971 | 0.597 | 0.740 | 0.587 |
-| Marmaris | 0.10 | 0.957 | 0.897 | 0.926 | 0.861 |
+| Manavgat | 0.10 | 0.886 | 0.878 | 0.882 | 0.789 |
+| Manavgat | 0.27 | 0.956 | 0.684 | 0.797 | 0.663 |
+| Manavgat | Otsu (0.328) | 0.967 | 0.601 | 0.741 | 0.589 |
+| Marmaris | 0.10 | 0.954 | 0.897 | 0.925 | 0.860 |
 | Marmaris | 0.27 | 0.983 | 0.675 | 0.800 | 0.667 |
 | Marmaris | Otsu (0.289) | 0.984 | 0.645 | 0.780 | 0.639 |
 
