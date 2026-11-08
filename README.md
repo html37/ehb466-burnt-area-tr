@@ -45,7 +45,7 @@ and choose *Runtime → Run all*. Runtime is about 1 minute; outputs are written
 **Local:**
 
 ```bash
-git clone https://github.com/KULLANICI_ADI/ehb466-burnt-area-tr.git
+git clone https://github.com/html37/ehb466-burnt-area-tr.git
 cd ehb466-burnt-area-tr
 pip install -r requirements.txt
 jupyter notebook notebooks/01_dnbr_benchmark.ipynb
