@@ -49,3 +49,7 @@ Format: date — decision — alternatives — reason.
   no 0.1 shift, so the offset handling is correct. Visible difference: Marmaris is darker in B11/B12 and its pre
   scene has very low B02 (clearer atmosphere / different land cover) — a genuine domain difference, not a scaling error.
 - **2026-11-27 — dNBR threshold tuned on FLOGA val = 0.24** (val F1 0.678), applied unchanged to FLOGA test and Türkiye.
+- **2026-11-27 — BAM-CD sanity check passed** (`outputs/tables/bamcd_sanity.csv`): v1 F1 on our FLOGA test split
+  0.909 vs 0.885 in the paper (Table V); v2 0.913. The +2.4 pt difference is plausible because our test set uses
+  the v2 imagery and re-created negative patches (same events); band order/normalisation are therefore correct.
+  BAM-CD is used on Türkiye without changes.
