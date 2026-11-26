@@ -22,6 +22,9 @@ T = ROOT / "outputs" / "tables"
 FIG = ROOT / "outputs" / "figures"
 
 STEPS = [
+    ("External code, split, BAM-CD weights, FLOGA tar index", ["05_get_external.py"],
+     [ROOT / "external/FLOGA/README.md", ROOT / "data/raw/bamcd/v1/best_segmentation.pt",
+      ROOT / "data/raw/floga_v2/index/sen2_20_mod_500__00061.tar.csv"]),
     ("Turkish test set (Planetary Computer)", ["10_build_turkey_testset.py"],
      [ROOT / "data/cache/turkey/Manavgat.npz", ROOT / "data/cache/turkey/Marmaris.npz"]),
     ("FLOGA patches and samples (Hugging Face)", ["20_prepare_floga.py"],
