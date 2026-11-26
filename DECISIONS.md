@@ -16,3 +16,27 @@ Format: date — decision — alternatives — reason.
   (FLOGA-annotations README: v1 files are keyed by the shapefile row index per year). Patch-level negative sampling
   of the original pickles is not published, so we re-create it with FLOGA's own `create_dataset.py` rules
   (256x256 non-overlapping patches, drop all-zero, cloudy and >=90 % sea patches, 1:1 positive:negative, fixed seed).
+- **2026-11-26 — v2 band handling.** v2 S2 GeoTIFFs have 10 bands (B01,B02,B03,B04,B05,B06,B07,B11,B12,B8A per the
+  GDAL band descriptions) and come from baseline N0500 (+1000 BOA offset, product names in FLOGA-annotations v2).
+  We drop B01 (-> exactly the v1 / BAM-CD order) and subtract 1000 (v1 and the 2021 Planetary-Computer scenes,
+  baseline 03.01, have no offset). Nodata 65535 -> 0. Alt: keep the offset — would shift all reflectances by 0.1
+  relative to Türkiye and to what BAM-CD v1 was trained on.
+- **2026-11-26 — v1 split -> v2 files.** 327 of 338 split events map to a v2 image (328 by fire ID + S2 tile,
+  5 by fire ID only; 11 unmatched because v2 has no image for them: 9 train, 2 test). Unmatched events are dropped
+  and listed in `outputs/tables/floga_event_mapping.csv`.
+- **2026-11-26 — Patch filters re-implemented from create_dataset.py**: 256x256 grid with FLOGA's padding, drop
+  patches with >10 SCL=9 pixels in pre or post (cloudy), >=90 % sea, or no data (SCL=0 everywhere); then per split
+  all positive patches + the same number of random negative patches (seed 999 = FLOGA config seed). The "zero patch"
+  test uses SCL=0 instead of the S2 band, because it avoids downloading every negative patch.
+- **2026-11-26 — Pixel sampling interpretation (paper Sec. V-B).** Positive patches: N/2 burnt (all if fewer) + N/2
+  unburnt; negative patches: N/2 unburnt; >=10 % of unburnt from sea when the patch has sea; pixels with SCL
+  3/8/9/10, label 2 or no data excluded; N = 2000 (paper). Alt: N pixels from negative patches too — would give a
+  3:1 unburnt:burnt ratio; ours gives ~2:1 and the decision threshold is tuned on val anyway.
+- **2026-11-26 — Reflectance for ML features = min(DN,10000)/10000** (FLOGA `clamp_scale_10000`), same for FLOGA
+  and Türkiye; dNBR benchmark uses DN/10000 without clamp (as notebook 01). NDWI = McFeeters (FLOGA Table IV);
+  MIRBI = 10·B12 − 9.8·B11 + 2 (Trigg & Flasse 2001; FLOGA Table IV prints the SWIR subscripts the other way).
+- **2026-11-26 — HPO objective** = best-threshold F1 on all valid FLOGA-val pixels (subset of 6 M random pixels if
+  > 12 M); LightGBM early stopping on the sampled val pixels (log-loss). Final decision threshold re-tuned per seed
+  on val. Ablation groups reuse the ALL hyper-parameters (no extra tuning, only early stopping/threshold).
+- **2026-11-26 — BAM-CD on Türkiye**: 256x256 windows, stride 128, triangular blending; threshold 0.5 (= argmax).
+  Cost is reported per 1000 km² of raster (AOI bounding box) for all methods.

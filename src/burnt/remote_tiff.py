@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import requests
@@ -18,11 +19,38 @@ _SESSION = requests.Session()
 _SESSION.headers["User-Agent"] = "ehb466-burnt-area (research; python-requests)"
 
 
-def http_range(url, start, length, retries=6):
-    """Return bytes [start, start+length) of `url`; retries with backoff."""
+_RESOLVED = {}  # hf url -> (cdn url, time resolved)
+
+
+def resolve(url, force=False):
+    """Resolve the Hugging Face redirect once and reuse the signed CDN URL (avoids HTTP 429 on /resolve/)."""
+    if "huggingface.co" not in url:
+        return url
+    hit = _RESOLVED.get(url)
+    if hit and not force and time.time() - hit[1] < 1800:
+        return hit[0]
+    for k in range(8):
+        r = _SESSION.head(url, allow_redirects=False, timeout=60)
+        if r.status_code in (301, 302, 307, 308):
+            _RESOLVED[url] = (r.headers["location"], time.time())
+            return _RESOLVED[url][0]
+        if r.status_code == 200:
+            _RESOLVED[url] = (url, time.time())
+            return url
+        time.sleep(min(60, 5 * 2 ** k))
+    raise IOError(f"cannot resolve {url}: HTTP {r.status_code}")
+
+
+def http_range(url, start, length, retries=8):
+    """Return bytes [start, start+length) of `url`; retries with backoff, re-resolves expired CDN links."""
     for k in range(retries):
         try:
-            r = _SESSION.get(url, headers={"Range": f"bytes={start}-{start + length - 1}"}, timeout=120)
+            r = _SESSION.get(resolve(url), headers={"Range": f"bytes={start}-{start + length - 1}"}, timeout=120)
+            if r.status_code in (403, 410):
+                resolve(url, force=True)
+            if r.status_code == 429:
+                time.sleep(min(60, 5 * 2 ** k))
+                continue
             if r.status_code in (200, 206):
                 data = r.content
                 if r.status_code == 200:  # server ignored range
@@ -33,6 +61,21 @@ def http_range(url, start, length, retries=6):
         except requests.RequestException:
             time.sleep(2 ** k)
     raise IOError(f"range read failed: {url} {start}+{length}")
+
+
+_POOL = ThreadPoolExecutor(32)
+
+
+def chunk_span(start, length, chunk=4 << 20):
+    return [(start + o, min(chunk, length - o)) for o in range(0, length, chunk)]
+
+
+def parallel_ranges(url, base, ranges):
+    """Fetch [(offset, length), ...] relative to `base` concurrently; returns list of bytes in order."""
+    if len(ranges) == 1:
+        o, n = ranges[0]
+        return [http_range(url, base + o, n)]
+    return list(_POOL.map(lambda r: http_range(url, base + r[0], r[1]), ranges))
 
 
 class RangeFile(io.RawIOBase):
@@ -120,40 +163,57 @@ class RemoteTiff:
             return True
         return bool(np.all(self.offsets[1:] == self.offsets[:-1] + self.bytecounts[:-1]))
 
-    def read_rows(self, r0, r1):
-        """Rows [r0, r1) -> array (bands, rows, width)."""
+    def read_rows(self, r0, r1, cols=None):
+        """Rows [r0, r1) -> array (bands, rows, width). Strip-organised files only.
+
+        All strips touching the rows are fetched as one byte span (in parallel chunks) and sliced locally.
+        If `cols=(c0, c1)` is given for a pixel-interleaved file, only those columns of each row are requested
+        (one small range per row, fetched in parallel), which is much cheaper for narrow windows.
+        """
         r0, r1 = max(0, r0), min(self.height, r1)
-        it = self.dtype.itemsize
         if self.is_tiled:
             raise NotImplementedError("tiled layout")
-        if self.planar == 1 and self._contiguous():
-            row_bytes = self.width * self.samples * it
-            start = int(self.offsets[0]) + r0 * row_bytes
-            buf = http_range(self.url, self.base + start, (r1 - r0) * row_bytes)
-            a = np.frombuffer(buf, self.dtype).reshape(r1 - r0, self.width, self.samples)
-            return np.moveaxis(a, -1, 0).copy()
-        if self.planar == 2:
-            nstrips_band = len(self.offsets) // self.samples
-            rps = self.rowsperstrip
-            out = np.empty((self.samples, r1 - r0, self.width), self.dtype)
-            s0, s1 = r0 // rps, (r1 - 1) // rps
-            for b in range(self.samples):
-                offs = self.offsets[b * nstrips_band + s0: b * nstrips_band + s1 + 1]
-                cnts = self.bytecounts[b * nstrips_band + s0: b * nstrips_band + s1 + 1]
-                if np.all(offs[1:] == offs[:-1] + cnts[:-1]):
-                    buf = http_range(self.url, self.base + int(offs[0]), int(cnts.sum()))
-                else:
-                    buf = b"".join(http_range(self.url, self.base + int(o), int(c)) for o, c in zip(offs, cnts))
-                a = np.frombuffer(buf, self.dtype).reshape(-1, self.width)
-                out[b] = a[r0 - s0 * rps: r1 - s0 * rps]
-            return out
-        # generic contig, non-contiguous strips
+        it = self.dtype.itemsize
         rps = self.rowsperstrip
+        spb = len(self.offsets) // (self.samples if self.planar == 2 else 1)  # strips per band
         s0, s1 = r0 // rps, (r1 - 1) // rps
-        buf = b"".join(http_range(self.url, self.base + int(self.offsets[s]), int(self.bytecounts[s]))
-                       for s in range(s0, s1 + 1))
-        a = np.frombuffer(buf, self.dtype).reshape(-1, self.width, self.samples)
-        return np.moveaxis(a[r0 - s0 * rps: r1 - s0 * rps], -1, 0).copy()
+        bands = range(self.samples) if self.planar == 2 else [0]
+        out = []
+        for b in bands:
+            offs = self.offsets[b * spb + s0: b * spb + s1 + 1]
+            cnts = self.bytecounts[b * spb + s0: b * spb + s1 + 1]
+            if cols is not None and self.planar == 1 and rps == 1:
+                c0, c1 = max(0, cols[0]), min(self.width, cols[1])
+                px = self.samples * it
+                rng = [(int(o) + c0 * px, (c1 - c0) * px) for o in offs]
+                parts = parallel_ranges(self.url, self.base, rng)
+                a = np.frombuffer(b"".join(parts), self.dtype).reshape(len(rng), c1 - c0, self.samples)
+                return np.moveaxis(a, -1, 0).copy()
+            span0 = int(offs.min()); span1 = int((offs + cnts).max())
+            if span1 - span0 <= 2 * int(cnts.sum()) + (1 << 20):
+                buf = b"".join(parallel_ranges(self.url, self.base, chunk_span(span0, span1 - span0)))
+                pieces = [buf[int(o) - span0: int(o) - span0 + int(c)] for o, c in zip(offs, cnts)]
+            else:  # strips scattered in the file: fetch each strip
+                pieces = parallel_ranges(self.url, self.base, [(int(o), int(c)) for o, c in zip(offs, cnts)])
+            per = self.width * (self.samples if self.planar == 1 else 1)
+            a = np.concatenate([np.frombuffer(x, self.dtype)[: (len(x) // it) // per * per] for x in pieces])
+            a = a.reshape(-1, self.width, self.samples if self.planar == 1 else 1)
+            out.append(a[r0 - s0 * rps: r1 - s0 * rps])
+        a = np.concatenate(out, axis=-1) if self.planar == 2 else out[0]
+        return np.moveaxis(a, -1, 0).copy()
+
+    def read_window(self, r0, r1, c0, c1):
+        """Pixel window with zero padding outside the image -> (bands, r1-r0, c1-c0)."""
+        out = np.zeros((self.samples, r1 - r0, c1 - c0), self.dtype)
+        rr0, rr1, cc0, cc1 = max(0, r0), min(self.height, r1), max(0, c0), min(self.width, c1)
+        if rr0 >= rr1 or cc0 >= cc1:
+            return out
+        if self.planar == 1 and self.rowsperstrip == 1:
+            a = self.read_rows(rr0, rr1, cols=(cc0, cc1))
+        else:
+            a = self.read_rows(rr0, rr1)[:, :, cc0:cc1]
+        out[:, rr0 - r0: rr1 - r0, cc0 - c0: cc1 - c0] = a
+        return out
 
     def read_all(self):
         return self.read_rows(0, self.height)
