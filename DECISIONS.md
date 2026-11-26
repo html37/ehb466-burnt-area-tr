@@ -40,3 +40,12 @@ Format: date — decision — alternatives — reason.
   on val. Ablation groups reuse the ALL hyper-parameters (no extra tuning, only early stopping/threshold).
 - **2026-11-26 — BAM-CD on Türkiye**: 256x256 windows, stride 128, triangular blending; threshold 0.5 (= argmax).
   Cost is reported per 1000 km² of raster (AOI bounding box) for all methods.
+- **2026-11-27 — FLOGA sample sizes (stage B/D result).** Cloud filter of create_dataset.py (>10 SCL=9 px per patch)
+  leaves 269/92/81 positive patches (train/val/test) + equal negatives; samples: train 710 625 px (226 937 burnt),
+  val 244 450 px (76 296 burnt). Kept as is (faithful to FLOGA rules; enough for pixel classifiers). Full FLOGA-val
+  = 10 811 245 valid px (< 12 M) -> HPO objective uses all val pixels, no subset.
+- **2026-11-27 — Harmonisation check passed** (`outputs/figures/band_harmonisation.png`, `band_harmonisation.csv`):
+  unburnt-land medians of FLOGA (after −1000 offset) and Türkiye agree within ~0.01–0.03 reflectance in every band;
+  no 0.1 shift, so the offset handling is correct. Visible difference: Marmaris is darker in B11/B12 and its pre
+  scene has very low B02 (clearer atmosphere / different land cover) — a genuine domain difference, not a scaling error.
+- **2026-11-27 — dNBR threshold tuned on FLOGA val = 0.24** (val F1 0.678), applied unchanged to FLOGA test and Türkiye.
