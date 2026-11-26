@@ -23,6 +23,8 @@ optuna>=3.5
 torch>=2.2
 torchvision
 segmentation-models-pytorch>=0.3
+pretrainedmodels  # imported by the FLOGA BAM-CD code
+scipy
 einops
 pytest
 jupyter

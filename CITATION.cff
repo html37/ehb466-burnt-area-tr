@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Burnt-area mapping of the 2021 Manavgat and Marmaris wildfires: a lightweight FLOGA-trained classifier versus dNBR and BAM-CD"
+authors:
+  - family-names: Temel
+    given-names: Hüseyin
+    affiliation: Istanbul Technical University
+  - family-names: Akkoca
+    given-names: Erdem
+    affiliation: Istanbul Technical University
+version: 1.0.0
+date-released: 2027-01-04
+repository-code: "https://github.com/html37/ehb466-burnt-area-tr"
+license: MIT
+keywords: [burnt area mapping, Sentinel-2, wildfire, transfer learning, LightGBM, FLOGA, BAM-CD, Türkiye]
+references:
+  - type: article
+    authors:
+      - family-names: Sdraka
+        given-names: Maria
+      - family-names: Dimakos
+        given-names: Alkinoos
+      - family-names: Malounis
+        given-names: Alexandros
+      - family-names: Ntasiou
+        given-names: Zisoula
+      - family-names: Karantzalos
+        given-names: Konstantinos
+      - family-names: Michail
+        given-names: Dimitrios
+      - family-names: Papoutsis
+        given-names: Ioannis
+    title: "FLOGA: A Machine-Learning-Ready Dataset, a Benchmark, and a Novel Deep Learning Model for Burnt Area Mapping With Sentinel-2"
+    journal: "IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing"
+    volume: 17
+    start: 7801
+    end: 7824
+    year: 2024
+    doi: 10.1109/JSTARS.2024.3381737

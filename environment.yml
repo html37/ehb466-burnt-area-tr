@@ -1,0 +1,8 @@
+# Conda alternative to the pip venv (exact pip versions: requirements-lock.txt).
+name: ehb466-burnt
+channels: [conda-forge]
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - -r requirements.txt
