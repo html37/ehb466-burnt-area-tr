@@ -81,11 +81,13 @@ def stage_a(cfg, ev):
     fc = cfg["floga"]
     keys = ev.loc[ev["key"].notna() & ~ev["dup_dropped"], "key"].tolist()
     rows = []
-    with ThreadPoolExecutor(10) as ex:
-        futs = [ex.submit(stage_a_event, k, cfg) for k in keys]
-        for i, fu in enumerate(as_completed(futs)):
-            key, arrs = fu.result()
-            rows += patch_rows(key, arrs, fc["patch"], fc["sea_ratio"], fc["cloud_max_px"])
+    def work(k):  # return only the small per-patch table so the mask arrays are freed immediately
+        key, arrs = stage_a_event(k, cfg)
+        return patch_rows(key, arrs, fc["patch"], fc["sea_ratio"], fc["cloud_max_px"])
+
+    with ThreadPoolExecutor(6) as ex:  # ex.map keeps no finished results alive
+        for i, r in enumerate(ex.map(work, keys)):
+            rows += r
             if i % 20 == 0:
                 log(f"stage A {i+1}/{len(keys)}")
     pt = pd.DataFrame(rows).merge(ev[["key", "set", "year", "fire_id"]].drop_duplicates("key"), on="key")
