@@ -1,0 +1,102 @@
+% Sections II-IV (related work, data, method). Numbers come from numbers.tex.
+\section{Related Work and Benchmarks}\label{sec:related}
+Spectral indices are the operational baseline of burnt-area mapping. The differenced Normalized Burn Ratio
+(dNBR) contrasts the near-infrared and short-wave-infrared response before and after a fire; the USGS FIREMON
+severity classes start at $\mathrm{dNBR}\geq0.10$ (low) and $0.27$ (moderate)~\cite{key2006landscape}. Other
+indices target Sentinel-2's red-edge bands (BAIS2~\cite{filipponi2018bais2}) or the two SWIR bands
+(MIRBI~\cite{trigg2001mirbi}). A single global threshold rarely transfers between land covers and acquisition
+conditions, which motivates learned methods~\cite{sdraka2024floga,roy2019landsat}.
+Deep networks, mostly U-Net variants~\cite{ronneberger2015unet}, segment burn scars from post-fire~\cite{knopp2020deep}
+or bi-temporal imagery. The FLOGA benchmark~\cite{sdraka2024floga} provides 326 Greek wildfire events (2017--2021)
+with Sentinel-2 and MODIS imagery and expert labels of the Hellenic Fire Service, an event-level split, and
+BAM-CD, a Siamese U-Net change detector with ResNet-101~\cite{he2016resnet} encoders and attention in the decoder
+(83.7\,M parameters). On the FLOGA test split BAM-CD reaches F1\,=\,88.48 for the burnt class, far above the best
+classical machine-learning model (SVM, 68.93) and dNBR (45.14)~\cite{sdraka2024floga}. FLOGA's authors show only
+qualitative transfer examples outside Greece; whether a model trained on Greek fires generalises quantitatively to a
+neighbouring country is open. Domain shift is a recognised problem in remote-sensing classification~\cite{tuia2016domain}.
+For the 2021 Manavgat fire, a bi-temporal Sentinel-2 index study with CORINE-based masking is available~\cite{altay2026manavgat}.
+
+\textbf{Benchmarks.} We compare against (i) dNBR with the fixed USGS thresholds and with a global threshold tuned on
+the FLOGA validation split, and (ii) BAM-CD with the official code and pretrained weights (v1, the paper model;
+v2, a later release), run without any modification.
+
+\section{Study Area and Data}\label{sec:data}
+\textbf{Test events.} The Manavgat fire (Antalya, EFFIS id 51931, 54\,769\,ha, 28~Jul--6~Aug 2021) and the
+Marmaris fire (Mu\u{g}la, id 51942, 11\,548\,ha, 29~Jul--5~Aug 2021) burned Mediterranean pine forest and maquis
+(Fig.~\ref{fig:study}). The area of interest (AOI) is the bounding box of the EFFIS perimeter buffered by 3\,km.
+
+\textbf{Sentinel-2 L2A}~\cite{drusch2012sentinel2} scenes are read from Microsoft Planetary
+Computer~\cite{planetarycomputer2022} (Copernicus open licence). Starting from the date closest to the fire, the
+first pass that covers the AOI with $\geq97\,\%$ clear pixels is selected and its tiles are mosaicked:
+Manavgat 20~Jul / 9~Aug 2021 (S2B, tiles 36SUF+36SUG), Marmaris 28~Jul / 7~Aug 2021 (S2A, 35SNA+35SPA).
+All nine FLOGA bands (B02--B07, B8A, B11, B12) are resampled to the 20\,m grid of the pre-fire B12 mosaic.
+Pixels whose scene classification (SCL) is cloud, shadow, cirrus, water or no data in either date are masked.
+
+\textbf{Reference.} EFFIS burnt-area perimeters~\cite{sanmiguel2012effis} (\textcopyright{} European Union, reuse with attribution)
+of all fires that started between the two image dates are rasterised on the same grid. EFFIS maps perimeters from
+Sentinel-2 as well, so the reference is independent in method but not in sensor (Sec.~\ref{sec:discussion}).
+
+\textbf{FLOGA} (CC BY 4.0) is used for training and validation only. Its v2 release on Hugging Face (1.1\,TB of
+uncompressed GeoTIFFs in tar shards for the 20\,m grid) contains the Copernicus-reprocessed imagery (baseline N0500);
+we remove the $+1000$ BOA offset and band B01 so that FLOGA, BAM-CD's input and the 2021 Turkish scenes share one
+radiometric convention. Of the \EventsSplit{} events of the official split, \EventsMapped{} have a v2 image
+(train/val/test \EventsTrain/\EventsVal/\EventsTest). Following FLOGA's dataset script, images are tiled into
+256$\times$256 patches; cloudy, $\geq$90\,\% sea and empty patches are removed and each split keeps all burnt
+patches plus as many random unburnt patches, giving \PatchesTrain/\PatchesVal/\PatchesTest{} patches
+(paper: 826/189/152). Pixels burnt by other fires of the same year (label 2) are ignored.
+\textbf{ESA WorldCover 2021}~\cite{zanaga2022worldcover} (CC BY 4.0) is used only for the error analysis.
+
+\section{Method}\label{sec:method}
+\begin{figure}[t]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[node distance=3mm and 4mm, every node/.style={font=\scriptsize},
+  box/.style={draw, rounded corners=2pt, align=center, minimum height=7mm, text width=20mm, fill=#1},
+  box/.default=white, >={Stealth[length=2mm]}]
+\node[box=blue!8] (pc) {Planetary Computer\\S2 L2A (STAC)};
+\node[box=blue!8, below=of pc] (effis) {EFFIS\\perimeters};
+\node[box=orange!10, right=of pc] (tr) {mosaic, SCL mask,\\20\,m, 9 bands\\(\texttt{10\_build})};
+\node[box=green!10, left=of pc] (hf) {FLOGA v2 (HF)\\byte-range reads};
+\node[box=green!10, below=of hf] (fp) {patches, split,\\pixel samples\\(\texttt{20\_prepare})};
+\node[box=green!10, below=of fp] (tune) {dNBR thr., HPO,\\5-seed training\\(FLOGA val only)};
+\node[box=red!8, below=of tr] (m) {dNBR $\mid$ BAM-CD $\mid$\\LightGBM / RF / LR};
+\node[box=red!8, below=of m] (ev) {metrics, block\\bootstrap, cost,\\ablation, errors};
+\node[box=gray!10, below=of effis] (paper) {tables, figures,\\\texttt{numbers.tex}};
+\draw[->] (pc) -- (tr); \draw[->] (hf) -- (fp); \draw[->] (fp) -- (tune);
+\draw[->] (tr) -- (m); \draw[->] (tune) -| ([xshift=-2mm]m.south west) -- (m.south west);
+\draw[->] (m) -- (ev); \draw[->] (effis) -| (ev); \draw[->] (ev) -- (paper);
+\end{tikzpicture}}
+\caption{Software architecture. Green: FLOGA (training/tuning); orange: Turkish test data; red: methods and
+evaluation. Turkish data enter only the evaluation (red) blocks.}\label{fig:arch}
+\end{figure}
+
+\textbf{Pipeline.} Fig.~\ref{fig:arch} shows the Python pipeline (\texttt{src/burnt}, numbered scripts, one
+\texttt{run\_all.py}). Every method writes its predictions on the identical Turkish 20\,m grid and on the identical
+list of FLOGA test pixels; a single evaluation script scores them with the same valid mask and reference.
+
+\textbf{Our method.} Each pixel is described by 36 features computed from reflectance
+$\rho=\min(\mathrm{DN},10^4)/10^4$ (FLOGA's scaling): six differenced indices
+$d\mathrm{SI}=\mathrm{SI}_\mathrm{pre}-\mathrm{SI}_\mathrm{post}$ (NBR, NBR2, NDVI, NDWI, BAIS2, MIRBI, formulas of
+FLOGA Table~IV~\cite{sdraka2024floga,mcfeeters1996ndwi,filipponi2018bais2,trigg2001mirbi}), the nine post- and nine
+pre-fire bands, and the twelve single-date indices. A LightGBM gradient-boosted tree ensemble~\cite{ke2017lightgbm}
+(primary), a Random Forest~\cite{breiman2001rf} and a logistic regression on the six differenced indices
+(scikit-learn~\cite{pedregosa2011sklearn}) are trained on pixels sampled from FLOGA-train as in~\cite{sdraka2024floga}:
+$N=2000$ pixels per patch, half burnt and half unburnt, $\geq$10\,\% of the unburnt ones on sea when present
+(\SamplesTrain{} pixels, \SamplesBurntTrain{} burnt).
+
+\textbf{Tuning on FLOGA only.} Hyper-parameters are searched with Optuna TPE~\cite{akiba2019optuna} (60 trials or 2\,h,
+median pruning); the objective is the burnt-class F1 on all valid pixels of the FLOGA validation patches at the best
+decision threshold. LightGBM uses early stopping on the sampled validation pixels. The final models are trained with
+5 seeds; each seed's decision threshold is chosen on FLOGA validation (grid 0.05--0.95). The global dNBR threshold
+is the F1-optimal value on FLOGA validation (grid step 0.01): \DnbrFlogaThr. A unit test asserts that none of the
+preparation, tuning or training scripts reads Turkish data.
+
+\textbf{BAM-CD.} The official model and weights are applied with FLOGA's preprocessing (clamp at 10\,000, divide by
+10\,000, no-data$\to$0), on 256$\times$256 windows with stride 128 blended by a triangular weight; burnt if the softmax
+probability exceeds 0.5 (= FLOGA's argmax). Before use on Türkiye we check it on the FLOGA test split.
+
+\textbf{Evaluation.} Precision, recall, F1 and IoU of the burnt class are computed on valid pixels of each event and of
+both events pooled. Uncertainty: mean$\pm$std over the 5 seeds, and 95\,\% confidence intervals from a spatial block
+bootstrap~\cite{kunsch1989bootstrap} (1\,km$\times$1\,km blocks, 1000 resamples, identical draws for all methods so
+that F1 differences are paired). Cost: parameters, model size, training time, CPU and GPU inference time per
+1000\,km$^2$ and peak memory on one laptop (Ryzen~7~6800H, 16\,GB, RTX~3050~Ti 4\,GB).

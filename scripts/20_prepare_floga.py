@@ -48,7 +48,9 @@ def stage_a_event(key, cfg):
     arrs = {}
     for what in ["label", "cloud_pre", "cloud_post", "sea", "clc"]:
         arrs[what] = floga.open_file(key, what).read_all()[0].astype(np.uint8)
-    np.savez_compressed(f, **arrs)
+    tmp = f.with_suffix(".tmp.npz")
+    np.savez_compressed(tmp, **arrs)
+    tmp.replace(f)
     return key, arrs
 
 
@@ -79,7 +81,7 @@ def stage_a(cfg, ev):
     fc = cfg["floga"]
     keys = ev.loc[ev["key"].notna() & ~ev["dup_dropped"], "key"].tolist()
     rows = []
-    with ThreadPoolExecutor(4) as ex:
+    with ThreadPoolExecutor(10) as ex:
         futs = [ex.submit(stage_a_event, k, cfg) for k in keys]
         for i, fu in enumerate(as_completed(futs)):
             key, arrs = fu.result()
