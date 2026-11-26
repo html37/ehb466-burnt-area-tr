@@ -1,0 +1,22 @@
+model: lgbm
+group: ALL
+params:
+  num_leaves: 255
+  max_depth: 16
+  learning_rate: 0.03125863042398381
+  min_child_samples: 138
+  colsample_bytree: 0.823515963618894
+  subsample: 0.5574961856473835
+  subsample_freq: 1
+  reg_alpha: 0.08150269108126383
+  reg_lambda: 5.074237473848822e-05
+  n_estimators: 2000
+val_f1: 0.8447857248306642
+threshold: 0.55
+best_iteration: 72
+n_trials: 60
+n_complete: 60
+n_pruned: 0
+val_info:
+  val_pixels_total: 10811245
+  subset: false

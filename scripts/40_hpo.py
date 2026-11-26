@@ -83,14 +83,15 @@ def space(trial, model):
 
 
 class PruneCallback:
-    """LightGBM callback: report val log-loss every 50 iterations to Optuna and prune if needed."""
+    """LightGBM callback: report negated val log-loss every 50 iterations to Optuna and prune if needed."""
 
     def __init__(self, trial):
         self.trial = trial
 
     def __call__(self, env):
         if env.iteration % 50 == 0 and env.evaluation_result_list:
-            self.trial.report(env.evaluation_result_list[0][2], step=env.iteration)
+            # study maximises F1, so report the negated log-loss (higher = better) to the MedianPruner
+            self.trial.report(-env.evaluation_result_list[0][2], step=env.iteration)
             if self.trial.should_prune():
                 raise optuna.TrialPruned()
 

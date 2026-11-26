@@ -53,3 +53,10 @@ Format: date — decision — alternatives — reason.
   0.909 vs 0.885 in the paper (Table V); v2 0.913. The +2.4 pt difference is plausible because our test set uses
   the v2 imagery and re-created negative patches (same events); band order/normalisation are therefore correct.
   BAM-CD is used on Türkiye without changes.
+- **2026-11-27 — HPO results (FLOGA val, all 10.8 M valid val pixels).** LightGBM/ALL best F1 0.845 (60/60 trials,
+  thr 0.55), LogReg/G2 F1 0.785 (thr 0.59). LightGBM early stopping on val log-loss stops early (7–176 iterations,
+  best trial 72): the val events differ from the train events, so log-loss on new events starts rising quickly —
+  a first sign of the event-level domain shift that the Turkish test measures.
+- **2026-11-27 — Pruner sign fix.** `PruneCallback` reported raw log-loss to a study that *maximises*; it now reports
+  −log-loss. No effect on the finished LightGBM study: every trial stopped before the pruner warm-up (200 iterations),
+  so 0 trials were pruned and the result is identical to what the corrected code produces.

@@ -1,0 +1,13 @@
+model: logreg
+group: G2
+params:
+  C: 0.6559071907702481
+val_f1: 0.7852764272793112
+threshold: 0.59
+best_iteration: null
+n_trials: 60
+n_complete: 60
+n_pruned: 0
+val_info:
+  val_pixels_total: 10811245
+  subset: false
