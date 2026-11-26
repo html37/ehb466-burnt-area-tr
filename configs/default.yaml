@@ -1,0 +1,61 @@
+# Default configuration: paths, AOIs, dates, bands. All scripts read this file via burnt.config.load_config().
+paths:
+  effis: data/effis_TR_2021.json
+  cache: data/cache
+  raw: data/raw
+  outputs: outputs
+  floga_repo: external/FLOGA
+  floga_split: data/raw/floga/data_split.csv
+  floga_index: data/raw/floga_v2/index
+
+seed: 42
+seeds: [0, 1, 2, 3, 4]          # 5 seeds for every learned model (CLAUDE.md rule 2.5)
+
+# ---------------- Sentinel-2 / STAC ----------------
+stac:
+  url: https://planetarycomputer.microsoft.com/api/stac/v1
+  collection: sentinel-2-l2a
+  max_tile_cloud: 20            # % cloud on tile level in STAC search
+  min_clear: 0.97               # required clear fraction inside AOI
+  max_candidates: 6
+
+# FLOGA 20 m band set and order (external/FLOGA/configs/config.json -> sen2_bands["20"])
+bands: [B02, B03, B04, B05, B06, B07, B11, B12, B8A]
+gsd: 20
+reflectance_scale: 10000        # DN / 10000 = reflectance; FLOGA scaling: clamp(DN, 10000) / 10000
+
+# SCL classes: 0 nodata,1 saturated,2 dark area,3 cloud shadow,4 vegetation,5 bare,6 water,7 unclassified,
+# 8/9 cloud,10 cirrus,11 snow. Burn scars are often SCL=2, so 2 is kept as valid land.
+scl_valid_land: [2, 4, 5, 7, 11]
+scl_clear: [2, 4, 5, 6, 7, 11]
+
+# ---------------- Turkish test events ----------------
+aoi_buffer_m: 3000
+events:
+  Manavgat:
+    effis_id: 51931
+    pre: ["2021-07-01", "2021-07-27"]
+    post: ["2021-08-07", "2021-09-15"]
+  Marmaris:
+    effis_id: 51942
+    pre: ["2021-07-01", "2021-07-28"]
+    post: ["2021-08-06", "2021-09-15"]
+
+# ---------------- dNBR benchmark ----------------
+dnbr:
+  usgs_thresholds: {dnbr_usgs_low: 0.10, dnbr_usgs_mod: 0.27}
+  grid: [-0.20, 1.00, 0.01]     # threshold grid searched on FLOGA val
+
+# ---------------- FLOGA patches / sampling ----------------
+floga:
+  patch: 256
+  sea_ratio: 0.9                # patches with >= 90 % sea are dropped (create_dataset.py default)
+  cloud_max_px: 10              # create_dataset.py: patch is cloudy if > 10 cloud pixels
+  neg_ratio: 1                  # 1 negative patch per positive patch
+  n_per_patch: 2000             # paper Section V-B
+  sea_frac_unburnt: 0.10        # >= 10 % of unburnt samples from sea/water when present
+
+# ---------------- evaluation ----------------
+bootstrap:
+  block_m: 1000
+  n_resamples: 1000

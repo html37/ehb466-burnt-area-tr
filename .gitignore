@@ -16,3 +16,4 @@ paper/*.bbl
 paper/*.blg
 .claude/settings.local.json
 *.tmp
+outputs/predictions/
