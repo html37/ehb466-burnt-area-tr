@@ -16,7 +16,7 @@ FORBIDDEN_TOKENS = ["burnt.turkey", "from burnt import turkey", "turkey.load_eve
                     "Manavgat", "Marmaris", "cache/turkey", "\"turkey\"", "'turkey'", "reference.effis_mask"]
 ALLOWED_TURKEY_USERS = {"10_build_turkey_testset.py", "60_run_bamcd.py", "65_predict_turkey.py", "70_evaluate.py",
                         "75_eval_checklabels.py", "80_ablation.py", "90_error_analysis.py",
-                        "95_make_paper_numbers.py", "make_figures.py"}
+                        "95_make_paper_numbers.py", "85_figures.py", "35_band_harmonisation.py", "72_cost_table.py", "74_make_labeling_kit.py", "75_eval_checklabels.py"}
 
 
 def burnt_imports(src):
