@@ -60,3 +60,7 @@ Format: date — decision — alternatives — reason.
 - **2026-11-27 — Pruner sign fix.** `PruneCallback` reported raw log-loss to a study that *maximises*; it now reports
   −log-loss. No effect on the finished LightGBM study: every trial stopped before the pruner warm-up (200 iterations),
   so 0 trials were pruned and the result is identical to what the corrected code produces.
+- **2026-11-27 — RF HPO stopped by the 2 h budget after 14 trials** (CLAUDE.md: 60 trials or 2 h, whichever first;
+  one RF trial = 2–17 min because the objective predicts all 10.8 M val pixels). Best val F1 0.846 (depth 24, sqrt,
+  450 trees, min_samples_leaf 1); the first trials were already within 0.001 of it, so more trials would change
+  little. The study is resumable (`40_hpo.py --model rf --timeout <s>`).
