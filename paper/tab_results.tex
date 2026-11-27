@@ -1,0 +1,15 @@
+\begin{tabular}{lcccccccc}
+\toprule
+ & FLOGA test & \multicolumn{2}{c}{Manavgat} & \multicolumn{2}{c}{Marmaris} & \multicolumn{2}{c}{T\"urkiye pooled} \\
+Method & F1 & F1 & IoU & F1 & IoU & F1 & 95\% CI \\
+\midrule
+dNBR $>$ 0.27 (USGS) & 0.658 & 0.797 & 0.663 & 0.800 & 0.667 & 0.798 & [0.787, 0.809] \\
+dNBR $>$ 0.10 (USGS) & 0.561 & 0.882 & 0.789 & \textbf{0.925} & 0.860 & 0.889 & [0.882, 0.897] \\
+dNBR, FLOGA-val thr. & 0.661 & 0.822 & 0.698 & 0.831 & 0.711 & 0.824 & [0.813, 0.833] \\
+BAM-CD v1 & 0.909 & 0.921 & 0.854 & 0.866 & 0.764 & 0.912 & [0.904, 0.921] \\
+BAM-CD v2 & 0.913 & \textbf{0.931} & 0.872 & 0.893 & 0.806 & \textbf{0.925} & [0.917, 0.933] \\
+LogReg (G2, ours) & 0.751 & 0.832 & 0.713 & 0.799 & 0.665 & 0.827 & [0.817, 0.837] \\
+Random Forest (ours) & 0.865$\pm$0.001 & 0.886$\pm$0.000 & 0.795 & 0.857$\pm$0.002 & 0.750 & 0.881$\pm$0.001 & [0.873, 0.889] \\
+LightGBM (ours) & 0.864$\pm$0.001 & 0.882$\pm$0.001 & 0.789 & 0.855$\pm$0.003 & 0.747 & 0.878$\pm$0.001 & [0.871, 0.887] \\
+\bottomrule
+\end{tabular}

@@ -27,8 +27,14 @@ Marmaris fire (Mu\u{g}la, id 51942, 11\,548\,ha, 29~Jul--5~Aug 2021) burned Medi
 
 \textbf{Sentinel-2 L2A}~\cite{drusch2012sentinel2} scenes are read from Microsoft Planetary
 Computer~\cite{planetarycomputer2022} (Copernicus open licence). Starting from the date closest to the fire, the
-first pass that covers the AOI with $\geq97\,\%$ clear pixels is selected and its tiles are mosaicked:
-Manavgat 20~Jul / 9~Aug 2021 (S2B, tiles 36SUF+36SUG), Marmaris 28~Jul / 7~Aug 2021 (S2A, 35SNA+35SPA).
+first pass that covers the AOI with $\geq97\,\%$ clear pixels is selected and its tiles are mosaicked
+(Table~\ref{tab:scenes}). All four passes have processing baseline 03.00, i.e.\ no BOA offset.
+
+\begin{table}[t]
+\centering
+\caption{Sentinel-2 L2A passes of the Turkish test set (same relative orbit before and after each fire).}\label{tab:scenes}
+\resizebox{\columnwidth}{!}{\input{tab_scenes.tex}}
+\end{table}
 All nine FLOGA bands (B02--B07, B8A, B11, B12) are resampled to the 20\,m grid of the pre-fire B12 mosaic.
 Pixels whose scene classification (SCL) is cloud, shadow, cirrus, water or no data in either date are masked.
 
@@ -45,6 +51,25 @@ radiometric convention. Of the \EventsSplit{} events of the official split, \Eve
 patches plus as many random unburnt patches, giving \PatchesTrain/\PatchesVal/\PatchesTest{} patches
 (paper: 826/189/152). Pixels burnt by other fires of the same year (label 2) are ignored.
 \textbf{ESA WorldCover 2021}~\cite{zanaga2022worldcover} (CC BY 4.0) is used only for the error analysis.
+Table~\ref{tab:data} lists every dataset, its role and licence. The strict separation of roles is the core of
+the experimental design: Turkish pixels are never seen by any step that fits or chooses something.
+
+\begin{table}[t]
+\centering
+\caption{Datasets, their role in this study and licences.}\label{tab:data}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{llll}
+\toprule
+Dataset & Content & Role & Licence \\
+\midrule
+FLOGA v2~\cite{sdraka2024floga} & S2 pre/post, labels, Greece & train / val / FLOGA test & CC BY 4.0 \\
+Sentinel-2 L2A (PC) & 9 bands, SCL, 2021 & Turkish test imagery & Copernicus \\
+EFFIS perimeters & burnt areas 2021 & Turkish reference & \textcopyright{} EU \\
+ESA WorldCover 2021 & 11 land-cover classes & error analysis only & CC BY 4.0 \\
+BAM-CD weights & v1, v2 checkpoints & benchmark (frozen) & MIT (code) \\
+\bottomrule
+\end{tabular}}
+\end{table}
 
 \section{Method}\label{sec:method}
 \begin{figure}[t]
@@ -75,17 +100,47 @@ evaluation. Turkish data enter only the evaluation (red) blocks.}\label{fig:arch
 list of FLOGA test pixels; a single evaluation script scores them with the same valid mask and reference.
 
 \textbf{Our method.} Each pixel is described by 36 features computed from reflectance
-$\rho=\min(\mathrm{DN},10^4)/10^4$ (FLOGA's scaling): six differenced indices
-$d\mathrm{SI}=\mathrm{SI}_\mathrm{pre}-\mathrm{SI}_\mathrm{post}$ (NBR, NBR2, NDVI, NDWI, BAIS2, MIRBI, formulas of
-FLOGA Table~IV~\cite{sdraka2024floga,mcfeeters1996ndwi,filipponi2018bais2,trigg2001mirbi}), the nine post- and nine
-pre-fire bands, and the twelve single-date indices. A LightGBM gradient-boosted tree ensemble~\cite{ke2017lightgbm}
+$\rho=\min(\mathrm{DN},10^4)/10^4$ (FLOGA's scaling). With B8A as the near-infrared band (FLOGA has no B08 at
+20\,m), the six single-date indices are
+\begin{align}
+\mathrm{NBR}&=\tfrac{\rho_{8A}-\rho_{12}}{\rho_{8A}+\rho_{12}}, \quad
+\mathrm{NBR2}=\tfrac{\rho_{11}-\rho_{12}}{\rho_{11}+\rho_{12}}, \quad
+\mathrm{NDVI}=\tfrac{\rho_{8A}-\rho_{4}}{\rho_{8A}+\rho_{4}}, \nonumber\\
+\mathrm{NDWI}&=\tfrac{\rho_{3}-\rho_{8A}}{\rho_{3}+\rho_{8A}}, \quad
+\mathrm{MIRBI}=10\rho_{12}-9.8\rho_{11}+2, \nonumber\\
+\mathrm{BAIS2}&=\Bigl(1-\sqrt{\tfrac{\rho_{6}\rho_{7}\rho_{8A}}{\rho_{4}}}\Bigr)
+\Bigl(\tfrac{\rho_{12}-\rho_{8A}}{\sqrt{\rho_{12}+\rho_{8A}}}+1\Bigr),
+\end{align}
+following FLOGA Table~IV~\cite{sdraka2024floga} and the original
+definitions~\cite{key2006landscape,mcfeeters1996ndwi,filipponi2018bais2,trigg2001mirbi}. A differenced index is
+$d\mathrm{SI}=\mathrm{SI}_\mathrm{pre}-\mathrm{SI}_\mathrm{post}$, so that burning gives positive dNBR. The feature
+groups are G1 (dNBR), G2 (the six $d\mathrm{SI}$), G3 (the nine post-fire bands), G4 (the nine pre-fire bands) and
+ALL = G2+G3+G4 plus the twelve single-date indices. A LightGBM gradient-boosted tree ensemble~\cite{ke2017lightgbm}
 (primary), a Random Forest~\cite{breiman2001rf} and a logistic regression on the six differenced indices
 (scikit-learn~\cite{pedregosa2011sklearn}) are trained on pixels sampled from FLOGA-train as in~\cite{sdraka2024floga}:
 $N=2000$ pixels per patch, half burnt and half unburnt, $\geq$10\,\% of the unburnt ones on sea when present
 (\SamplesTrain{} pixels, \SamplesBurntTrain{} burnt).
 
+\begin{table}[t]
+\centering
+\caption{Hyper-parameter search spaces (Optuna TPE, objective: F1 on FLOGA validation).}\label{tab:hpo}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{ll}
+\toprule
+Model & Search space \\
+\midrule
+LightGBM & leaves 15--255 (log), depth $-1$ or 4--16, learning rate 0.01--0.3 (log), \\
+ & min.\ child samples 10--200, feature / bagging fraction 0.5--1, \\
+ & $\lambda_1,\lambda_2$ $10^{-8}$--10 (log), up to 2000 trees, early stopping (100) \\
+Random Forest & 100--500 trees, depth 8--32 or none, min.\ leaf 1--50 (log), \\
+ & max.\ features $\{\sqrt{p}, 0.3p, 0.5p\}$ \\
+Logistic reg. & $C$ $10^{-4}$--$10^{2}$ (log), standardised G2 features \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
 \textbf{Tuning on FLOGA only.} Hyper-parameters are searched with Optuna TPE~\cite{akiba2019optuna} (60 trials or 2\,h,
-median pruning); the objective is the burnt-class F1 on all valid pixels of the FLOGA validation patches at the best
+median pruning, Table~\ref{tab:hpo}); the objective is the burnt-class F1 on all valid pixels of the FLOGA validation patches at the best
 decision threshold. LightGBM uses early stopping on the sampled validation pixels. The final models are trained with
 5 seeds; each seed's decision threshold is chosen on FLOGA validation (grid 0.05--0.95). The global dNBR threshold
 is the F1-optimal value on FLOGA validation (grid step 0.01): \DnbrFlogaThr. A unit test asserts that none of the
@@ -99,4 +154,4 @@ probability exceeds 0.5 (= FLOGA's argmax). Before use on Türkiye we check it o
 both events pooled. Uncertainty: mean$\pm$std over the 5 seeds, and 95\,\% confidence intervals from a spatial block
 bootstrap~\cite{kunsch1989bootstrap} (1\,km$\times$1\,km blocks, 1000 resamples, identical draws for all methods so
 that F1 differences are paired). Cost: parameters, model size, training time, CPU and GPU inference time per
-1000\,km$^2$ and peak memory on one laptop (Ryzen~7~6800H, 16\,GB, RTX~3050~Ti 4\,GB).
+1000\,km$^2$ and peak memory on one laptop (Ryzen~7~6800H, 16\,GB, RTX~3050 Laptop GPU with 4\,GB).

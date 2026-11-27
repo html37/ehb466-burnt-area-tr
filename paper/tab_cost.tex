@@ -1,0 +1,12 @@
+\begin{tabular}{lrrrrrrr}
+\toprule
+Method & Params & MB & Train s & CPU s & GPU s & RAM MB & F1 TR \\
+\midrule
+dNBR $>$ 0.10 & 1 & 0.0 & 0 & 0.1 & -- & 445 & 0.889 \\
+BAM-CD v1 & 83\,727\,022 & 319.4 & -- & 50.2 & 5.4 & 3786 & 0.912 \\
+BAM-CD v2 & 126\,245\,998 & 481.6 & -- & 49.6 & 5.3 & 4497 & 0.925 \\
+LogReg (G2, ours) & 7 & 0.0 & 0 & 0.9 & -- & 1337 & 0.827 \\
+Random Forest & 14\,706\,552 & 1122.2 & 450 & 28.7 & -- & 3901 & 0.881 \\
+LightGBM & 35\,834 & 1.9 & 9 & 2.9 & -- & 2765 & 0.878 \\
+\bottomrule
+\end{tabular}

@@ -19,7 +19,7 @@ Format: date — decision — alternatives — reason.
 - **2026-11-26 — v2 band handling.** v2 S2 GeoTIFFs have 10 bands (B01,B02,B03,B04,B05,B06,B07,B11,B12,B8A per the
   GDAL band descriptions) and come from baseline N0500 (+1000 BOA offset, product names in FLOGA-annotations v2).
   We drop B01 (-> exactly the v1 / BAM-CD order) and subtract 1000 (v1 and the 2021 Planetary-Computer scenes,
-  baseline 03.01, have no offset). Nodata 65535 -> 0. Alt: keep the offset — would shift all reflectances by 0.1
+  baseline 03.00, have no offset). Nodata 65535 -> 0. Alt: keep the offset — would shift all reflectances by 0.1
   relative to Türkiye and to what BAM-CD v1 was trained on.
 - **2026-11-26 — v1 split -> v2 files.** 327 of 338 split events map to a v2 image (328 by fire ID + S2 tile,
   5 by fire ID only; 11 unmatched because v2 has no image for them: 9 train, 2 test). Unmatched events are dropped

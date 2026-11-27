@@ -30,6 +30,16 @@ F1 of the burnt class. Learned models: mean ± std over 5 seeds; 95 % CI from a 
 (1000 resamples). Türkiye reference: EFFIS perimeters; evaluation area: EFFIS polygon bounding box + 3 km.
 
 <!-- RESULTS:START -->
+| Method | FLOGA test F1 | Manavgat F1 | Marmaris F1 | Türkiye pooled F1 [95% CI] | CPU s / 1000 km² | Params |
+|---|---|---|---|---|---|---|
+| dNBR > 0.27 (USGS) | 0.658 | 0.797 | 0.800 | 0.798 [0.787, 0.809] | 0.1 | 1 |
+| dNBR > 0.10 (USGS) | 0.561 | 0.882 | 0.925 | 0.889 [0.882, 0.897] | 0.1 | 1 |
+| dNBR, FLOGA-val thr. | 0.661 | 0.822 | 0.831 | 0.824 [0.813, 0.833] | 0.1 | 1 |
+| BAM-CD v1 | 0.909 | 0.921 | 0.866 | 0.912 [0.904, 0.921] | 50.2 | 83 727 022 |
+| BAM-CD v2 | 0.913 | 0.931 | 0.893 | 0.925 [0.917, 0.933] | 49.6 | 126 245 998 |
+| LogReg (G2, ours) | 0.751 | 0.832 | 0.799 | 0.827 [0.817, 0.837] | 0.9 | 7 |
+| Random Forest (ours) | 0.865 ± 0.001 | 0.886 ± 0.000 | 0.857 ± 0.002 | 0.881 ± 0.001 [0.873, 0.889] | 28.7 | 14 706 552 |
+| LightGBM (ours) | 0.864 ± 0.001 | 0.882 ± 0.001 | 0.855 ± 0.003 | 0.878 ± 0.001 [0.871, 0.887] | 2.9 | 35 834 |
 <!-- RESULTS:END -->
 
 Full tables: `outputs/tables/` (`eval_turkey.csv`, `eval_floga_test.csv`, `bootstrap_turkey.csv`,

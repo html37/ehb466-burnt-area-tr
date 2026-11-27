@@ -1,0 +1,18 @@
+% Abstract (<= 200 words). All numbers are macros from numbers.tex.
+\begin{abstract}
+Rapid burnt-area maps after large wildfires support damage assessment and restoration planning by the Turkish
+forestry (OGM) and disaster (AFAD) agencies. Deep change-detection networks such as BAM-CD are accurate but heavy
+and need GPUs. We ask whether a lightweight pixel classifier trained only on the Greek FLOGA dataset can map the
+2021 Manavgat and Marmaris fires from bi-temporal Sentinel-2 imagery without any Turkish training data. A LightGBM
+model on 36 differenced-index and band features is tuned on FLOGA validation only and evaluated against EFFIS
+perimeters on the same 20\,m grid as dNBR thresholding and the pretrained BAM-CD. On both Turkish events pooled,
+LightGBM reaches F1\,=\,\FoneLgbmPooled{} (95\,\% block-bootstrap CI \FoneLoLgbmPooled--\FoneHiLgbmPooled), versus
+\FoneBamcdOnePooled{} for BAM-CD and \FoneDnbrFlogaPooled{} for dNBR with a FLOGA-tuned threshold; on Marmaris the
+difference to BAM-CD is not significant. LightGBM is \SpeedupCpuLgbmBamcd{} times faster than BAM-CD on a CPU and
+has \ParamRatioBamcdLgbm{} times fewer parameters (\ModelMBLgbm\,MB). No method lost accuracy when moving from
+Greece to Türkiye, which is the first quantitative evidence that FLOGA-trained models transfer to Turkish fires.
+\end{abstract}
+
+\begin{IEEEkeywords}
+burnt area mapping, Sentinel-2, transfer learning, LightGBM, change detection, FLOGA, wildfire, Türkiye
+\end{IEEEkeywords}

@@ -1,0 +1,222 @@
+% Paper body. Every result is a macro from numbers.tex or a generated table (tab_*.tex); nothing is typed by hand.
+\section{Introduction}\label{sec:intro}
+In late July and August 2021 a heat wave and strong winds drove many wildfires in southern Türkiye. The two
+largest, at Manavgat (Antalya) and Marmaris (Mu\u{g}la), burned about 55\,000 and 11\,500\,ha of pine forest,
+maquis and settlements. After such events the General Directorate of Forestry (OGM) needs the burnt perimeter and
+area to plan salvage logging, erosion control and reforestation, and the Disaster and Emergency Management Authority
+(AFAD) needs it for damage assessment. Both want a map within days, for many fires per season, on ordinary
+office computers.
+
+Sentinel-2 provides free 10--20\,m imagery every few days. The operational baseline is the differenced
+Normalized Burn Ratio (dNBR) with a fixed threshold~\cite{key2006landscape}, which is fast but sensitive to the
+threshold and to land cover. Deep change-detection networks trained on large labelled datasets are far more
+accurate: BAM-CD, trained on the Greek FLOGA dataset, reaches F1\,=\,88.48 on FLOGA's test events~\cite{sdraka2024floga}.
+However, it has 84\,M parameters, is best run on a GPU, and it is unknown how well it works outside Greece, because
+the FLOGA paper only shows qualitative examples abroad. Türkiye has no comparable public training set.
+
+We therefore study \emph{transfer without local labels}: models are trained and tuned only on Greek FLOGA data and
+then applied, frozen, to the two Turkish fires. Our contributions are:
+\begin{itemize}
+\item A lightweight pixel classifier (LightGBM on 36 bi-temporal features) that reaches an F1 of
+\FoneLgbmPooled{} on the Turkish events ($\Delta$F1\,=\,\DeltaLgbmBamcdOnePooled{} relative to BAM-CD), while being
+\SpeedupCpuLgbmBamcd$\times$ faster on a CPU and \ParamRatioBamcdLgbm$\times$ smaller in parameters.
+\item The first quantitative test of FLOGA$\rightarrow$Türkiye transfer for dNBR, BAM-CD and our models on an
+identical grid, with spatial block-bootstrap confidence intervals and paired differences.
+\item A fully reproducible open pipeline, including a byte-range reader that extracts the needed FLOGA patches
+from the 1.1\,TB Hugging Face release, an ablation and a land-cover error analysis.
+\end{itemize}
+
+\input{sec_method.tex}
+
+\section{Experiments and Results}\label{sec:results}
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{study_area.pdf}
+\caption{Study area. (a) EFFIS burnt areas in Türkiye, July--August 2021 (marker size $\propto$ area);
+(b, c) post-fire Sentinel-2 false-colour composites (B12/B8A/B04) with the EFFIS perimeter.}\label{fig:study}
+\end{figure*}
+
+\textbf{Checks before testing.} BAM-CD with the official weights gives F1\,=\,\FoneBamcdOneFlogaSanity{} (v1) and
+\FoneBamcdTwoFlogaSanity{} (v2) on our FLOGA test patches, close to the 88.48 reported in~\cite{sdraka2024floga};
+the difference is plausible because our test patches use the v2 imagery and re-created unburnt patches. The
+unburnt-land reflectance medians of FLOGA and the Turkish scenes differ by at most \HarmMaxAbsDiff{} in any band,
+so the BOA-offset handling is consistent (Fig.~\ref{fig:harm}); the remaining differences, such as the darker SWIR
+response of the Marmaris scenes, reflect land cover and atmosphere, i.e.\ genuine domain shift. HPO found LightGBM parameters with \HpLgbmNumLeaves{} leaves per tree and
+learning rate \HpLgbmLearningRate{} (validation F1 \HpoValFoneLgbm{}, \HpoTrialsLgbm{} trials); the Random Forest
+search was stopped by the 2\,h budget after \HpoTrialsRf{} trials (F1 \HpoValFoneRf{}). The LightGBM history
+(Fig.~\ref{fig:hpo}) shows that all trials lie within one F1 point of the best one: the model is not sensitive to
+its hyper-parameters, the number of leaves being the most important one. Early stopping on FLOGA validation stops
+every LightGBM trial after fewer than 200 trees, a first sign that validation events differ from training events.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\columnwidth]{hpo_history_lgbm.pdf}
+\caption{LightGBM hyper-parameter search: F1 on FLOGA validation per trial and best value so far.}\label{fig:hpo}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{band_harmonisation.pdf}
+\caption{Reflectance distributions of unburnt land pixels in FLOGA (after removing the $+1000$ offset) and in the
+Turkish pre- and post-fire scenes.}\label{fig:harm}
+\end{figure}
+
+\begin{table*}[t]
+\centering
+\caption{Burnt-class accuracy on the FLOGA test split and on the Turkish test events (EFFIS reference). Our models:
+mean$\pm$std over 5 seeds. CI: 95\,\% spatial block bootstrap (1\,km blocks, 1000 resamples).}\label{tab:results}
+\input{tab_results.tex}
+\end{table*}
+
+\textbf{Accuracy.} Table~\ref{tab:results} and Fig.~\ref{fig:metrics} summarise the results. On the Turkish
+events pooled, LightGBM obtains F1\,=\,\FoneLgbmPooled{} (IoU \IoULgbmPooled) and the Random Forest
+\FoneRfPooled; the seed-to-seed spread is at most a few thousandths. The paired bootstrap difference to BAM-CD v1 is
+\DeltaLgbmBamcdOnePooled{} [\DeltaLgbmBamcdOnePooledLo, \DeltaLgbmBamcdOnePooledHi] pooled,
+\DeltaLgbmBamcdOneManavgat{} [\DeltaLgbmBamcdOneManavgatLo, \DeltaLgbmBamcdOneManavgatHi] at Manavgat and
+\DeltaLgbmBamcdOneMarmaris{} [\DeltaLgbmBamcdOneMarmarisLo, \DeltaLgbmBamcdOneMarmarisHi] at Marmaris, i.e.\ not
+significant at Marmaris. BAM-CD v2 is better still (\FoneBamcdTwoPooled). Against the dNBR benchmark that is tuned,
+like our models, on FLOGA only, LightGBM gains \DeltaLgbmDnbrFlogaPooled{}
+[\DeltaLgbmDnbrFlogaPooledLo, \DeltaLgbmDnbrFlogaPooledHi] F1. The fixed USGS threshold dNBR\,$>$\,0.10 is
+remarkably good on Türkiye (\FoneDnbrLowPooled, best of all methods at Marmaris) but poor on the FLOGA test split
+(\FoneDnbrLowFloga), whereas our models score \FoneLgbmFloga{} there: the learned models are accurate in both
+domains, the fixed threshold only in one. Our models are conservative: precision \PrecLgbmPooled{} versus recall
+\RecLgbmPooled{} pooled, and the predicted area (\AreaLgbmPooled\,ha) is below the EFFIS area (\RefAreaPooled\,ha).
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{metrics_ci.pdf}
+\caption{F1 on the Turkish events with 95\,\% block-bootstrap confidence intervals (seed 0 for our models).}\label{fig:metrics}
+\end{figure*}
+
+\textbf{Domain shift.} The F1 change from FLOGA test (in-domain) to Türkiye pooled (out-of-domain) is
+\ShiftLgbm{} for LightGBM, \ShiftRf{} for the Random Forest and \ShiftBamcdOne{} for BAM-CD v1; no method lost
+accuracy. The dNBR variants even gain more than 0.1 (\ShiftDnbrFloga{} for the FLOGA-tuned threshold), showing that
+the two Turkish fires are easier targets than the average FLOGA test event: they are large, contiguous and
+severely burnt, while FLOGA contains many small, partly burnt fires. The transfer is therefore successful, but
+the absolute Turkish scores should not be read as typical for smaller Turkish fires.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{compare_Manavgat.pdf}\\[-2mm]
+\includegraphics[width=\textwidth]{compare_Marmaris.pdf}
+\caption{Agreement with EFFIS (red: true positive, orange: commission, blue: omission, white: masked) for dNBR,
+BAM-CD v1 and LightGBM (seed 0). Most errors of all methods are omissions inside the EFFIS perimeter.}\label{fig:maps}
+\end{figure*}
+
+\textbf{Cost.} Table~\ref{tab:cost} and Fig.~\ref{fig:cost} compare cost on the same laptop. LightGBM predicts
+1000\,km$^2$ in \CpuTimeLgbm\,s on the CPU, including feature computation, versus \CpuTimeBamcdOne\,s for BAM-CD
+on the CPU and \GpuTimeBamcdOne\,s on the GPU; it trains in \TrainTimeLgbm\,s per seed and its model file is
+\ModelMBLgbm\,MB, against \ModelMBBamcdOne\,MB of BAM-CD weights. The Random Forest is as accurate as LightGBM
+but its fully grown trees make it \ModelMBRf\,MB large and about an order of magnitude slower (\CpuTimeRf\,s), so LightGBM is the better
+lightweight choice. All methods run within a few gigabytes of RAM.
+
+\begin{table}[t]
+\centering
+\caption{Cost on one laptop: parameters (tree nodes for forests), model size, training time per seed, inference
+time per 1000\,km$^2$, peak RAM, and pooled Turkish F1 (F1 TR).}\label{tab:cost}
+\resizebox{\columnwidth}{!}{\input{tab_cost.tex}}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{cost_accuracy.pdf}
+\caption{Accuracy versus cost (log axes).}\label{fig:cost}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{errors_by_landcover.pdf}
+\caption{Commission and omission area by ESA WorldCover 2021 class, both events.}\label{fig:errors}
+\end{figure}
+
+\begin{table}[!b]
+\centering
+\caption{Omission rate (\%) of EFFIS-burnt pixels per dNBR severity band (USGS classes), both events pooled, and
+share of the reference in each band. Our models: seed 0.}\label{tab:severity}
+\resizebox{\columnwidth}{!}{\input{tab_severity.tex}}
+\end{table}
+
+\textbf{Ablation.} The models of Table~\ref{tab:ablation} retrain LightGBM (same hyper-parameters,
+5 seeds) on nested feature groups. dNBR alone (G1) reaches only \AblGOneVal{} on FLOGA validation; the six
+differenced indices (G2) raise it to \AblGTwoVal{}, which is most of the gain. Post-fire bands (G2+G3,
+\AblGTwoThreeVal) and pre-fire bands and single-date indices (ALL, \AblAllVal) add little on FLOGA. On Türkiye the
+picture differs by event: ALL is best at Manavgat (\FoneLgbmManavgat), while G2+G3 is better at Marmaris
+(\FoneAblGTwoThreeMarmaris{} vs \FoneLgbmMarmaris). Pre-fire reflectance carries site-specific information (the
+Marmaris pre-fire scene is darker in the SWIR bands than FLOGA), which can hurt transfer. Following our protocol, the
+main model was fixed on FLOGA validation (ALL) and not changed after seeing this test result.
+
+\begin{table}[t]
+\centering
+\caption{Feature ablation (LightGBM, F1, mean$\pm$std over 5 seeds). G1: dNBR; G2: six differenced indices;
+G3: post-fire bands; ALL: G2+G3+pre-fire bands+single-date indices.}\label{tab:ablation}
+\resizebox{\columnwidth}{!}{\input{tab_ablation.tex}}
+\end{table}
+
+\textbf{Error analysis.} Fig.~\ref{fig:maps} and Fig.~\ref{fig:errors} break the errors down by ESA WorldCover
+class. For all methods, omission errors are larger than commission errors and concentrate in tree cover and
+grassland inside the EFFIS perimeter. Part of this is unburnt or lightly burnt vegetation that EFFIS includes in
+its generalised perimeter (unburnt islands), so it is not necessarily a model error. Compared with BAM-CD, our
+pixel models miss more burnt grassland, cropland and bare or sparse land, where the spectral change is weak and
+BAM-CD can use the spatial context of neighbouring pixels. Commission of our models is small and mostly at the
+perimeter edges; dNBR\,$>$\,0.10 produces the most scattered false alarms on cropland outside the fires.
+
+Table~\ref{tab:severity} groups the EFFIS-burnt pixels by their own dNBR. \SevShareUnchanged\,\% of them show
+almost no spectral change (dNBR\,$<$\,0.10). A pixel classifier can hardly label such pixels as burnt: LightGBM
+misses \SevOmitUnchangedLgbm\,\% of them and the Random Forest \SevOmitUnchangedRf\,\%. BAM-CD misses only
+\SevOmitUnchangedBamcdOne\,\%, because its convolutional decoder fills small unchanged patches enclosed by burnt
+land, as EFFIS's generalised perimeter does. In the moderate and high severity bands our models omit fewer
+burnt pixels than BAM-CD. Hence BAM-CD's higher recall on Türkiye comes mainly from pixels whose ``burnt'' label is
+a property of the perimeter rather than of the spectral signal.
+
+
+
+\section{Discussion}\label{sec:discussion}
+\textbf{Where and why.} The lightweight model closes most of the gap between dNBR and BAM-CD at a small fraction
+of BAM-CD's cost, and it is the only method that is good on both FLOGA and Türkiye without per-site threshold
+tuning. Its remaining gap to BAM-CD comes from pixels with weak spectral change, where spatial context matters;
+adding simple neighbourhood features (e.g.\ local means of dNBR) is a natural next step.
+
+\textbf{Operational use.} For OGM and AFAD the practical question is which tool to run after the next fire. On a
+standard office CPU LightGBM maps 1000\,km$^2$ in seconds, needs no GPU and fits in an e-mail attachment, so it
+can be run for every fire of a season; the map is conservative (high precision), which suits damage statistics
+that must not be inflated. BAM-CD gives the most complete perimeters and is preferable when a GPU is available
+and a single large fire must be mapped as completely as possible. A fixed dNBR threshold is the cheapest option,
+but our results show that the right threshold differs between regions (0.10 fits Türkiye, the FLOGA-tuned
+\DnbrFlogaThr{} fits Greece), which a learned model avoids.
+
+\textbf{Why no domain-shift loss?} One might expect a model trained in Greece to degrade in Türkiye. Both countries
+share Mediterranean climate, vegetation types (pine forest and maquis) and the same sensor and processing
+chain, and our harmonisation removed the only systematic radiometric difference (the BOA offset). The ablation
+nevertheless shows a residual site effect: pre-fire bands help at Manavgat but hurt at Marmaris, so features that
+describe the \emph{change} transfer better than features that describe the \emph{site}.
+
+\textbf{Limitations.} (i) The reference is EFFIS, which is itself mapped from Sentinel-2 by analysts with
+spectral-index tools; it is independent of our models but not of the sensor, and its generalised perimeters
+include unburnt islands. This may also explain why dNBR\,$>$\,0.10 matches it so well. An independent check with
+photo-interpreted points is prepared (\texttt{labeling/}) but not yet labelled. (ii) Only two events from one
+season were tested, both large and severe; smaller or low-severity fires are likely harder. (iii) FLOGA v1
+imagery could not be downloaded by code, so we used the reprocessed v2 imagery and re-created the unburnt patch
+selection; BAM-CD v1 was trained on v1 imagery, although its FLOGA test score is close to the published one.
+(iv) The bootstrap CIs use one seed per method; the seed-to-seed spread is reported separately and is much
+smaller than the CIs. (v) The Random Forest search used \HpoTrialsRf{} of 60 trials within the 2\,h budget.
+
+\section{Conclusion and Future Work}\label{sec:conclusion}
+A LightGBM classifier trained only on Greek FLOGA data maps the 2021 Manavgat and Marmaris burnt areas with
+F1\,=\,\FoneLgbmPooled{} against EFFIS ($\Delta$F1\,=\,\DeltaLgbmBamcdOnePooled{} relative to the BAM-CD deep
+network) and clearly above
+a FLOGA-tuned dNBR, while running \SpeedupCpuLgbmBamcd$\times$ faster on a CPU with a \ModelMBLgbm\,MB model. Transfer
+from Greece to Türkiye did not reduce the accuracy of any method. Future work: independent check labels,
+more and smaller Turkish fires (e.g.\ the other 2021 EFFIS events), neighbourhood features, and a light
+fine-tuning step with a few Turkish labels.
+
+\section*{Code and Data Availability}
+Code, configuration, small models, all tables and figures: \url{https://github.com/html37/ehb466-burnt-area-tr},
+release \texttt{v1.0}. \texttt{run\_all.py} regenerates every number of this paper, and a Colab notebook runs the
+demo end to end. Data: Sentinel-2 L2A via Microsoft Planetary Computer (Copernicus licence), FLOGA (CC BY 4.0),
+EFFIS (\textcopyright{} European Union), ESA WorldCover (CC BY 4.0), BAM-CD code (MIT) and weights from the FLOGA
+repository.
+
+\section*{Author Contributions and Use of AI}
+\textbf{[TODO: confirm roles]} H.~Temel and E.~Akkoca: roles to be stated with CRediT terms by the authors.
+Claude Code (Anthropic) was used for code generation, experiment orchestration and drafting of the text; the
+authors reviewed all code, results and text and are responsible for the content.
