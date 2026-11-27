@@ -1,0 +1,17 @@
+{
+ "threshold": 0.55,
+ "group": "ALL",
+ "val_f1": 0.8446022068187394,
+ "params": {
+  "num_leaves": 255,
+  "max_depth": 16,
+  "learning_rate": 0.03125863042398381,
+  "min_child_samples": 138,
+  "colsample_bytree": 0.823515963618894,
+  "subsample": 0.5574961856473835,
+  "subsample_freq": 1,
+  "reg_alpha": 0.08150269108126383,
+  "reg_lambda": 5.074237473848822e-05,
+  "n_estimators": 2000
+ }
+}

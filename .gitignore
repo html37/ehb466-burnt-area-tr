@@ -17,3 +17,6 @@ paper/*.blg
 .claude/settings.local.json
 *.tmp
 outputs/predictions/
+
+# Random Forest models are ~1.1 GB each (> 50 MB limit); regenerate with scripts/50_train_final.py
+outputs/models/rf/*.pkl

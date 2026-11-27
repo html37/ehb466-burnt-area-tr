@@ -1,0 +1,22 @@
+{
+ "python": "3.11.9",
+ "platform": "Windows-10-10.0.19045-SP0",
+ "cpu": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+ "cpu_count": 16,
+ "ram_gb": 15.2,
+ "numpy": "2.4.6",
+ "pandas": "3.1.1",
+ "scikit-learn": "1.9.1",
+ "lightgbm": "4.7.0",
+ "optuna": "5.1.0",
+ "torch": "2.14.1+cu126",
+ "rasterio": "1.4.4",
+ "xarray": "2026.9.0",
+ "rioxarray": "0.19.0",
+ "geopandas": "1.2.0",
+ "segmentation-models-pytorch": "0.6.0",
+ "pystac-client": "0.9.1",
+ "planetary-computer": "1.0.0",
+ "cuda": "12.6",
+ "gpu": "NVIDIA GeForce RTX 3050 Ti Laptop GPU"
+}

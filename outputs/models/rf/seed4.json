@@ -1,0 +1,11 @@
+{
+ "threshold": 0.51,
+ "group": "ALL",
+ "val_f1": 0.8459352467128517,
+ "params": {
+  "max_depth": 24,
+  "max_features": "sqrt",
+  "n_estimators": 450,
+  "min_samples_leaf": 1
+ }
+}

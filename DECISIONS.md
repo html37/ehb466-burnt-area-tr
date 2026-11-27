@@ -64,3 +64,8 @@ Format: date — decision — alternatives — reason.
   one RF trial = 2–17 min because the objective predicts all 10.8 M val pixels). Best val F1 0.846 (depth 24, sqrt,
   450 trees, min_samples_leaf 1); the first trials were already within 0.001 of it, so more trials would change
   little. The study is resumable (`40_hpo.py --model rf --timeout <s>`).
+- **2026-11-27 — Random Forest models are not committed or released.** With the tuned parameters (450 fully grown
+  trees, min_samples_leaf 1) each RF pickle is ~1.1 GB (5.5 GB for 5 seeds), far above the 50 MB repo limit and
+  impractical as a release asset. They are git-ignored and reproducible with `scripts/50_train_final.py --models rf`
+  (~7.5 min per seed); their size is itself reported in the cost table. LightGBM (1.9 MB/seed) and LogReg models are
+  committed; the demo uses LightGBM.
