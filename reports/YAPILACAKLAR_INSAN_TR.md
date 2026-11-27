@@ -19,4 +19,7 @@ Otomatik kısım bitti. Aşağıdakiler yalnızca ekip üyelerinin yapabileceği
    birbirinize sorun.
 7. **Teslim (4 Ocak 2027 23:59):** `paper/main.pdf` + depo bağlantısı + release `v1.0`. Son değişikliklerden sonra
    gerekiyorsa `v1.0.1` etiketi atın (`gh release create v1.0.1 ...`).
-8. **Akran değerlendirmesi** formlarını doldurun (gizli).
+8. **Colab'de demo süresini bir kez ölçün.** README'deki "Open in Colab" ile not defterini CPU modunda
+   çalıştırın ve yazdırılan toplam süreyi `docs/demo_runtime.md` dosyasına ekleyin (yerelde ölçülen 186 s,
+   Colab 2 çekirdek tahmini < 15 dk).
+9. **Akran değerlendirmesi** formlarını doldurun (gizli).
