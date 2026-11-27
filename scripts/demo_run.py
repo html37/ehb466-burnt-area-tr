@@ -56,7 +56,16 @@ def ensure_models():
     return d
 
 
+FLOGA_REPO = "https://github.com/Orion-AI-Lab/FLOGA"
+FLOGA_COMMIT = "0efa4b37ca665259a69273b33b0d9f9e91421d3f"  # same pinned commit as scripts/05_get_external.py
+
+
 def ensure_bamcd():
+    code = ROOT / "external" / "FLOGA"
+    if not (code / "models" / "bam_cd").exists():  # official BAM-CD model code (MIT)
+        code.parent.mkdir(exist_ok=True)
+        subprocess.run(["git", "clone", "-q", FLOGA_REPO, str(code)], check=True)
+        subprocess.run(["git", "-C", str(code), "checkout", "-q", FLOGA_COMMIT], check=True)
     f = ROOT / "data" / "raw" / "bamcd" / "v1" / "best_segmentation.pt"
     if not f.exists():
         fetch_zip(BAMCD_V1, f.parent)
