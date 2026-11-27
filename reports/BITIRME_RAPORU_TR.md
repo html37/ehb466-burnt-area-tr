@@ -122,10 +122,27 @@ sayılık bir özellik vektörüyle) sınıflandırılır; komşu piksellere bak
 
 ### 4.1 Ana tablo (otomatik)
 <!-- RESULTS:START -->
+| Yöntem | FLOGA test F1 | Manavgat F1 | Marmaris F1 | Türkiye birleşik F1 [95% CI] | CPU s / 1000 km² | Params |
+|---|---|---|---|---|---|---|
+| dNBR > 0.27 (USGS) | 0.658 | 0.797 | 0.800 | 0.798 [0.787, 0.809] | 0.1 | 1 |
+| dNBR > 0.10 (USGS) | 0.561 | 0.882 | 0.925 | 0.889 [0.882, 0.897] | 0.1 | 1 |
+| dNBR, FLOGA-val thr. | 0.661 | 0.822 | 0.831 | 0.824 [0.813, 0.833] | 0.1 | 1 |
+| BAM-CD v1 | 0.909 | 0.921 | 0.866 | 0.912 [0.904, 0.921] | 50.2 | 83 727 022 |
+| BAM-CD v2 | 0.913 | 0.931 | 0.893 | 0.925 [0.917, 0.933] | 49.6 | 126 245 998 |
+| LogReg (G2, ours) | 0.751 | 0.832 | 0.799 | 0.827 [0.817, 0.837] | 0.9 | 7 |
+| Random Forest (ours) | 0.865 ± 0.001 | 0.886 ± 0.000 | 0.857 ± 0.002 | 0.881 ± 0.001 [0.873, 0.889] | 28.7 | 14 706 552 |
+| LightGBM (ours) | 0.864 ± 0.001 | 0.882 ± 0.001 | 0.855 ± 0.003 | 0.878 ± 0.001 [0.871, 0.887] | 2.9 | 35 834 |
 <!-- RESULTS:END -->
 
 ### 4.2 Yorum (otomatik sayılarla)
 <!-- INTERPRETATION:START -->
+- **Ana sonuç:** Sadece Yunanistan verisiyle (FLOGA) eğitilen LightGBM, iki Türk yangınında birlikte F1 = 0.878 (%95 güven aralığı 0.871–0.887) aldı. BAM-CD v1: 0.912, BAM-CD v2: 0.925, FLOGA'da ayarlanmış dNBR: 0.824, USGS dNBR > 0.10: 0.889.
+- **BAM-CD ile fark:** ΔF1 = -0.033 [-0.040, -0.027] (birleşik). Manavgat'ta -0.039, Marmaris'te -0.006 [-0.021, +0.010] — Marmaris'te aralık sıfırı içerdiği için fark istatistiksel olarak anlamlı değil. Yani BAM-CD biraz daha iyi, ama fark küçük.
+- **Maliyet:** LightGBM CPU'da 1000 km²'yi 2.9 s'de haritalıyor, BAM-CD 50.2 s (≈17 kat). Parametre sayısı 2337 kat az; model dosyası 1.9 MB (BAM-CD ağırlıkları 319.4 MB). Eğitim tohum başına 9 s.
+- **dNBR:** FLOGA'da ayarlanmış eşiği (0.24) LightGBM +0.055 F1 farkla geçiyor. USGS 0.10 eşiği Türkiye'de çok iyi (0.889) ama FLOGA testinde kötü (0.561); bizim model iki yerde de iyi (FLOGA test 0.864). Sabit eşik bölgeye göre değişiyor, öğrenen model bu sorunu yaşamıyor.
+- **Alan kayması (Yunanistan → Türkiye):** Hiçbir yöntemin doğruluğu düşmedi (LightGBM +0.013, BAM-CD v1 +0.003). Bunun bir nedeni iki Türk yangınının büyük ve şiddetli olması; küçük yangınlarda sonuç daha düşük olabilir.
+- **Ablasyon:** Sadece dNBR (G1) FLOGA doğrulamada 0.678; altı fark indeksi (G2) 0.839 — kazancın çoğu buradan. ALL 0.844. Marmaris'te ön-yangın bantları olmadan (G2+G3) daha iyi (0.875 vs 0.855); kurala uyarak ana modeli değiştirmedik.
+- **Hata analizi:** EFFIS'in yanık dediği piksellerin %11.8'inde neredeyse hiç spektral değişim yok (dNBR < 0.10). LightGBM bunların %97.0'ini, BAM-CD %46.2'sini kaçırıyor: BAM-CD komşu piksellere bakarak poligon içini dolduruyor. BAM-CD'nin üstünlüğünün asıl kaynağı bu.
 <!-- INTERPRETATION:END -->
 
 ## 5. Sınırlılıklar (dürüstçe)

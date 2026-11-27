@@ -237,12 +237,84 @@ def write_readme(ev, boot, cost):
         cpu = f"{cost.loc[m, 'cpu_s_per_1000km2']:.1f}" if m in cost.index and pd.notna(cost.loc[m, "cpu_s_per_1000km2"]) else "–"
         par = num_words(cost.loc[m, "params"]).replace("\\,", " ") if m in cost.index and pd.notna(cost.loc[m, "params"]) else "–"
         out.append(f"| {lab[m]} | {flt} | {f('Manavgat')} | {f('Marmaris')} | {f('Türkiye (pooled)')}{ci} | {cpu} | {par} |")
-    rd = ROOT / "README.md"
-    s = rd.read_text(encoding="utf-8")
-    a, b = "<!-- RESULTS:START -->", "<!-- RESULTS:END -->"
+    replace_block(ROOT / "README.md", "RESULTS", "\n".join(out))
+    # Turkish reports: same table + interpretation / key numbers built from the macros (no hand-typed values)
+    tr_table = "\n".join(out).replace("| Method |", "| Yöntem |").replace("Türkiye pooled F1", "Türkiye birleşik F1")
+    replace_block(ROOT / "reports" / "BITIRME_RAPORU_TR.md", "RESULTS", tr_table)
+    replace_block(ROOT / "reports" / "BITIRME_RAPORU_TR.md", "INTERPRETATION", interpretation_tr())
+    replace_block(ROOT / "reports" / "SUNUM_VE_SORU_CEVAP_TR.md", "KEYNUMBERS", key_numbers_tr())
+    replace_block(ROOT / "reports" / "final_presentation_outline.md", "KEYNUMBERS", key_numbers_tr())
+
+
+def replace_block(path, tag, text):
+    """Replace the text between <!-- TAG:START --> and <!-- TAG:END --> in a Markdown file."""
+    if not path.exists():
+        return
+    s = path.read_text(encoding="utf-8")
+    a, b = f"<!-- {tag}:START -->", f"<!-- {tag}:END -->"
     if a in s and b in s:
-        s = s[:s.index(a) + len(a)] + "\n" + "\n".join(out) + "\n" + s[s.index(b):]
-        rd.write_text(s, encoding="utf-8")
+        s = s[:s.index(a) + len(a)] + "\n" + text + "\n" + s[s.index(b):]
+        path.write_text(s, encoding="utf-8")
+
+
+def _m(name):
+    """Value of a generated macro as plain text (LaTeX thin spaces -> normal spaces)."""
+    return _defined.get(name, "n/a").replace("\\,", " ")
+
+
+def interpretation_tr():
+    m = _m
+    return "\n".join([
+        f"- **Ana sonuç:** Sadece Yunanistan verisiyle (FLOGA) eğitilen LightGBM, iki Türk yangınında birlikte "
+        f"F1 = {m('FoneLgbmPooled')} (%95 güven aralığı {m('FoneLoLgbmPooled')}–{m('FoneHiLgbmPooled')}) aldı. "
+        f"BAM-CD v1: {m('FoneBamcdOnePooled')}, BAM-CD v2: {m('FoneBamcdTwoPooled')}, FLOGA'da ayarlanmış dNBR: "
+        f"{m('FoneDnbrFlogaPooled')}, USGS dNBR > 0.10: {m('FoneDnbrLowPooled')}.",
+        f"- **BAM-CD ile fark:** ΔF1 = {m('DeltaLgbmBamcdOnePooled')} [{m('DeltaLgbmBamcdOnePooledLo')}, "
+        f"{m('DeltaLgbmBamcdOnePooledHi')}] (birleşik). Manavgat'ta {m('DeltaLgbmBamcdOneManavgat')}, Marmaris'te "
+        f"{m('DeltaLgbmBamcdOneMarmaris')} [{m('DeltaLgbmBamcdOneMarmarisLo')}, {m('DeltaLgbmBamcdOneMarmarisHi')}] — "
+        "Marmaris'te aralık sıfırı içerdiği için fark istatistiksel olarak anlamlı değil. Yani BAM-CD biraz daha iyi, "
+        "ama fark küçük.",
+        f"- **Maliyet:** LightGBM CPU'da 1000 km²'yi {m('CpuTimeLgbm')} s'de haritalıyor, BAM-CD {m('CpuTimeBamcdOne')} s "
+        f"(≈{m('SpeedupCpuLgbmBamcd')} kat). Parametre sayısı {m('ParamRatioBamcdLgbm')} kat az; model dosyası "
+        f"{m('ModelMBLgbm')} MB (BAM-CD ağırlıkları {m('ModelMBBamcdOne')} MB). Eğitim tohum başına {m('TrainTimeLgbm')} s.",
+        f"- **dNBR:** FLOGA'da ayarlanmış eşiği ({m('DnbrFlogaThr')}) LightGBM {m('DeltaLgbmDnbrFlogaPooled')} F1 "
+        f"farkla geçiyor. USGS 0.10 eşiği Türkiye'de çok iyi ({m('FoneDnbrLowPooled')}) ama FLOGA testinde kötü "
+        f"({m('FoneDnbrLowFloga')}); bizim model iki yerde de iyi (FLOGA test {m('FoneLgbmFloga')}). Sabit eşik bölgeye "
+        "göre değişiyor, öğrenen model bu sorunu yaşamıyor.",
+        f"- **Alan kayması (Yunanistan → Türkiye):** Hiçbir yöntemin doğruluğu düşmedi (LightGBM {m('ShiftLgbm')}, "
+        f"BAM-CD v1 {m('ShiftBamcdOne')}). Bunun bir nedeni iki Türk yangınının büyük ve şiddetli olması; küçük "
+        "yangınlarda sonuç daha düşük olabilir.",
+        f"- **Ablasyon:** Sadece dNBR (G1) FLOGA doğrulamada {m('AblGOneVal')}; altı fark indeksi (G2) {m('AblGTwoVal')} "
+        f"— kazancın çoğu buradan. ALL {m('AblAllVal')}. Marmaris'te ön-yangın bantları olmadan (G2+G3) daha iyi "
+        f"({m('FoneAblGTwoThreeMarmaris')} vs {m('FoneLgbmMarmaris')}); kurala uyarak ana modeli değiştirmedik.",
+        f"- **Hata analizi:** EFFIS'in yanık dediği piksellerin %{m('SevShareUnchanged')}'inde neredeyse hiç spektral "
+        f"değişim yok (dNBR < 0.10). LightGBM bunların %{m('SevOmitUnchangedLgbm')}'ini, BAM-CD %"
+        f"{m('SevOmitUnchangedBamcdOne')}'sini kaçırıyor: BAM-CD komşu piksellere bakarak poligon içini dolduruyor. "
+        "BAM-CD'nin üstünlüğünün asıl kaynağı bu.",
+    ])
+
+
+def key_numbers_tr():
+    m = _m
+    return "\n".join([
+        f"- FLOGA test F1: BAM-CD v1 {m('FoneBamcdOneFloga')} (makale 0.8848), LightGBM {m('FoneLgbmFloga')}, "
+        f"RF {m('FoneRfFloga')}, dNBR (FLOGA eşiği) {m('FoneDnbrFlogaFloga')}",
+        f"- Türkiye birleşik F1: LightGBM {m('FoneLgbmPooled')} [{m('FoneLoLgbmPooled')}, {m('FoneHiLgbmPooled')}], "
+        f"BAM-CD v1 {m('FoneBamcdOnePooled')}, BAM-CD v2 {m('FoneBamcdTwoPooled')}, dNBR 0.10 {m('FoneDnbrLowPooled')}, "
+        f"dNBR FLOGA eşiği {m('FoneDnbrFlogaPooled')}",
+        f"- Manavgat F1: LightGBM {m('FoneLgbmManavgat')}, BAM-CD v1 {m('FoneBamcdOneManavgat')}; Marmaris F1: LightGBM "
+        f"{m('FoneLgbmMarmaris')}, BAM-CD v1 {m('FoneBamcdOneMarmaris')}",
+        f"- ΔF1 (LightGBM − BAM-CD v1), birleşik: {m('DeltaLgbmBamcdOnePooled')} [{m('DeltaLgbmBamcdOnePooledLo')}, "
+        f"{m('DeltaLgbmBamcdOnePooledHi')}]; (LightGBM − dNBR FLOGA): {m('DeltaLgbmDnbrFlogaPooled')}",
+        f"- Maliyet: LightGBM {m('ParamsLgbm')} parametre (ağaç düğümü), {m('ModelMBLgbm')} MB, CPU {m('CpuTimeLgbm')} s/1000 km²; "
+        f"BAM-CD v1 {m('ParamsBamcdOne')} parametre, CPU {m('CpuTimeBamcdOne')} s, GPU {m('GpuTimeBamcdOne')} s/1000 km²",
+        f"- HPO: LightGBM {m('HpoTrialsLgbm')} deneme, doğrulama F1 {m('HpoValFoneLgbm')}; RF {m('HpoTrialsRf')} deneme "
+        f"(2 saat sınırı), F1 {m('HpoValFoneRf')}; dNBR eşiği {m('DnbrFlogaThr')}",
+        f"- Ablasyon (FLOGA doğrulama F1): G1 {m('AblGOneVal')}, G2 {m('AblGTwoVal')}, G2+G3 {m('AblGTwoThreeVal')}, "
+        f"ALL {m('AblAllVal')}",
+        f"- Veri: FLOGA {m('EventsMapped')}/{m('EventsSplit')} olay, yama train/val/test {m('PatchesTrain')}/"
+        f"{m('PatchesVal')}/{m('PatchesTest')}, eğitim örneği {m('SamplesTrain')} piksel",
+    ])
 
 
 def fmt_pm(m, s, bold=False):

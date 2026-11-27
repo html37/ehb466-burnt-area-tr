@@ -44,9 +44,9 @@ göre daha az bellekle benzer/daha iyi doğruluk. FLOGA makalesindeki XGBoost'un
 EN: Strong on tabular per-pixel features, fast, CPU-only, tiny model files.
 
 **S7. Maliyeti nasıl ölçtünüz? / How did you measure cost?**
-TR: Aynı dizüstü bilgisayarda (Ryzen 7 6800H, 16 GB, RTX 3050 Ti): parametre sayısı, model boyutu, eğitim süresi,
+TR: Aynı dizüstü bilgisayarda (Ryzen 7 6800H, 16 GB, RTX 3050 Laptop GPU): parametre sayısı, model boyutu, eğitim süresi,
 1000 km² başına CPU ve GPU çıkarım süresi, en yüksek RAM/VRAM (`src/burnt/cost.py`, `outputs/tables/cost_table.csv`).
-BAM-CD'nin eğitim maliyetini ölçmedik (önceden eğitilmiş ağırlık kullandık); onun eğitimi GPU ve 250 epoch gerektirir.
+BAM-CD'nin eğitim maliyetini ölçmedik (önceden eğitilmiş ağırlık kullandık); FLOGA yapılandırmasına göre onun eğitimi GPU üzerinde 150 epoch sürer (`external/FLOGA/configs/config.json`).
 EN: Same laptop; params, size, train time, CPU/GPU inference time per 1000 km², peak memory.
 
 **S8. BAM-CD'den kötüyse ne olacak? / What if you are worse than BAM-CD?**
@@ -113,4 +113,12 @@ yeterince çok blok bırakıyor. Ayrıntı: Künsch (1989).
 
 ## 3. Otomatik sayılar
 <!-- KEYNUMBERS:START -->
+- FLOGA test F1: BAM-CD v1 0.909 (makale 0.8848), LightGBM 0.864, RF 0.865, dNBR (FLOGA eşiği) 0.661
+- Türkiye birleşik F1: LightGBM 0.878 [0.871, 0.887], BAM-CD v1 0.912, BAM-CD v2 0.925, dNBR 0.10 0.889, dNBR FLOGA eşiği 0.824
+- Manavgat F1: LightGBM 0.882, BAM-CD v1 0.921; Marmaris F1: LightGBM 0.855, BAM-CD v1 0.866
+- ΔF1 (LightGBM − BAM-CD v1), birleşik: -0.033 [-0.040, -0.027]; (LightGBM − dNBR FLOGA): +0.055
+- Maliyet: LightGBM 35 834 parametre (ağaç düğümü), 1.9 MB, CPU 2.9 s/1000 km²; BAM-CD v1 83 727 022 parametre, CPU 50.2 s, GPU 5.4 s/1000 km²
+- HPO: LightGBM 60 deneme, doğrulama F1 0.845; RF 14 deneme (2 saat sınırı), F1 0.846; dNBR eşiği 0.24
+- Ablasyon (FLOGA doğrulama F1): G1 0.678, G2 0.839, G2+G3 0.841, ALL 0.844
+- Veri: FLOGA 327/338 olay, yama train/val/test 538/184/162, eğitim örneği 710 625 piksel
 <!-- KEYNUMBERS:END -->

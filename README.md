@@ -67,7 +67,7 @@ pytest -q
 threshold on FLOGA val (`30`) → band harmonisation check (`35`) → HPO (`40`) → final training, 5 seeds (`50`) →
 BAM-CD (`60`) → Turkish predictions (`65`) → ablation models (`80 --train`) → evaluation + bootstrap (`70`) →
 cost table (`72`) → ablation report (`80 --report`) → error analysis (`90`) → figures (`85`) → paper numbers (`95`).
-Hardware used: `docs/hardware.md` (Ryzen 7 6800H, 16 GB RAM, RTX 3050 Ti 4 GB).
+Hardware used: `docs/hardware.md` (Ryzen 7 6800H, 16 GB RAM, RTX 3050 Laptop GPU 4 GB).
 
 ## Test isolation
 
